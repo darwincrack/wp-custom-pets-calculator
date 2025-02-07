@@ -528,7 +528,16 @@ function foad_display_order_meta_in_admin( $order ){
     foreach( $fields as $key => $label ){
         $value = $order->get_meta($key);
         if( $value ){
-            echo '<li><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value ) . '</li>';
+
+            if($key == 'pedido_sugerido'){
+                echo '<li><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value ) . ' Kg</li>';
+            }else if($key == 'weight'){
+                echo '<li><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value ) . ' Kg</li>';
+            }
+            else{
+                echo '<li><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value ) . '</li>';
+
+            }
         }
     }
     echo '</ul>';
