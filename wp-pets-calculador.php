@@ -1,9 +1,10 @@
 <?php
 /*
-Plugin Name: Calculador de Alimento para Mascotas – Versión Extendida con Mixto (v1.4.1)
+Plugin Name: Calculador de Alimento para Mascotas
 Description: Plugin que calcula la cantidad de alimento a comprar (para perros y gatos) según edad, actividad, peso, etc., genera la orden en WooCommerce usando un shortcode, guarda los datos del formulario en la orden (usando un hook adecuado) y muestra los datos en el admin.
 Version: 1.4.1
-Author: Tu Nombre
+Author: Darwin Cedeño
+Author URI: https://darwincd.com/
 */
 
 if ( ! defined( 'ABSPATH' ) ) {
