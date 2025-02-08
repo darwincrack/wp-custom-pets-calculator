@@ -118,11 +118,12 @@ function foad_register_shortcode() {
           <label>Su edad es:</label>
           <div class="inline-fields">
             <div>
-                <label style="    margin-top: -17px;">Años:</label>
+                <label >Años:</label>
               <input type="number" name="years" id="years" value="0" min="0" placeholder="Años">
             </div>
-            <div style="    margin-top: 14px;">
-              <!-- Se muestran opciones desde 2 hasta 12 -->
+            <div>
+
+                <label >Meses:</label>
               <select name="months" id="months">
                 <?php for ($i = 1; $i <= 12; $i++): ?>
                   <option value="<?php echo $i; ?>"><?php echo $i; ?> mes<?php echo ($i > 1 ? 'es' : ''); ?></option>
