@@ -103,7 +103,7 @@ function foad_register_shortcode() {
     <div id="foad-calculator-wrapper">
       <form id="pet-food-calculator">
         <p>
-          <label for="pet_type">Tipo de mascota:</label>
+          <label for="pet_type">Mi compañero es un:</label>
           <select name="pet_type" id="pet_type">
             <option value="perro">Perro</option>
             <option value="gato">Gato</option>
@@ -115,12 +115,13 @@ function foad_register_shortcode() {
         </p>
         <!-- Edad de la mascota: años y meses en una misma línea -->
         <p>
-          <label>Edad de la mascota:</label>
+          <label>Su edad es:</label>
           <div class="inline-fields">
             <div>
+                <label style="    margin-top: -17px;">Años:</label>
               <input type="number" name="years" id="years" value="0" min="0" placeholder="Años">
             </div>
-            <div>
+            <div style="    margin-top: 14px;">
               <!-- Se muestran opciones desde 2 hasta 12 -->
               <select name="months" id="months">
                 <?php for ($i = 1; $i <= 12; $i++): ?>
@@ -144,16 +145,16 @@ function foad_register_shortcode() {
           <input type="number" name="weight" id="weight" step="0.1" min="0" placeholder="Ej: 10.5">
         </p>
         <p>
-          <label for="meals">Veces a comer al día:</label>
+          <label for="meals">Número de veces que come al día:</label>
           <input type="number" name="meals" id="meals" min="1" placeholder="Ej: 3">
         </p>
         <p>
-          <label for="days">Días a comprar comida:</label>
+          <label for="days">¿Para cuántos días necesitas comprar?:</label>
           <input type="number" name="days" id="days" min="1" placeholder="Ej: 15">
         </p>
         <!-- Nuevo selector: Tipo de alimento -->
         <p>
-          <label for="food_type">Tipo de alimento:</label>
+          <label for="food_type">¿Qué tipo de proteína?:</label>
           <select name="food_type" id="food_type">
             <option value="pollo">Pollo</option>
             <option value="res">Res</option>
