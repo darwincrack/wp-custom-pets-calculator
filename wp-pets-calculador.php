@@ -2,7 +2,7 @@
 /*
 Plugin Name: Calculador de Alimento para Mascotas
 Description: Plugin que calcula la cantidad de alimento a comprar (para perros y gatos) según edad, actividad, peso, etc., genera la orden en WooCommerce usando un shortcode, guarda los datos del formulario en la orden (usando un hook adecuado) y muestra los datos en el admin.
-Version: 1.4.1
+Version: 1.4.2
 Author: Darwin Cedeño
 Author URI: https://darwincd.com/
 */
@@ -16,6 +16,26 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function foad_register_shortcode() {
     ob_start();
+
+    // Obtener los códigos postales permitidos para la zona "Querétaro"
+    $allowed_postal_codes = array();
+    if ( class_exists( 'WC_Shipping_Zones' ) ) {
+        $zones = WC_Shipping_Zones::get_zones();
+
+        foreach ( $zones as $zone ) {
+            if ( isset( $zone['zone_name'] ) && $zone['zone_name'] === 'Querétaro' ) {
+                if ( isset( $zone['zone_locations'] ) && is_array( $zone['zone_locations'] ) ) {
+                    foreach ( $zone['zone_locations'] as $location ) {
+                        if ( isset( $location->type ) && $location->type === 'postcode' && isset( $location->code ) ) {
+
+                            $allowed_postal_codes[] = $location->code;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
     ?>
     <!-- Estilos para un formulario moderno y estilizado -->
     <style>
@@ -62,26 +82,20 @@ function foad_register_shortcode() {
         cursor: pointer;
         transition: background 0.3s ease;
     }
-
-    #close-modal-btn{
+    #close-modal-btn {
         background-color: #6c757d;
         border-color: #6c757d;
     }
     #calculate-btn:hover, #generate-order-btn:hover, #close-modal-btn:hover {
         background: #005177;
     }
-
-    #close-modal-btn:hover{
+    #close-modal-btn:hover {
         background-color: #5a6268;
         border-color: #545b62;
     }
-
-    .ped-sugerido{
+    .ped-sugerido {
         font-size: 2rem;
     }
-
-
-
     /* Modal */
     #foad-result-modal {
         display: none;
@@ -118,12 +132,11 @@ function foad_register_shortcode() {
           <label>Su edad es:</label>
           <div class="inline-fields">
             <div>
-                <label >Años:</label>
+              <label>Años:</label>
               <input type="number" name="years" id="years" value="0" min="0" placeholder="Años">
             </div>
             <div>
-
-                <label >Meses:</label>
+              <label>Meses:</label>
               <select name="months" id="months">
                 <?php for ($i = 1; $i <= 12; $i++): ?>
                   <option value="<?php echo $i; ?>"><?php echo $i; ?> mes<?php echo ($i > 1 ? 'es' : ''); ?></option>
@@ -153,6 +166,11 @@ function foad_register_shortcode() {
           <label for="days">¿Para cuántos días necesitas comprar?:</label>
           <input type="number" name="days" id="days" min="1" placeholder="Ej: 15">
         </p>
+        <!-- Nuevo campo: Código postal -->
+        <p>
+          <label for="postal_code">Código postal:</label>
+          <input type="text" name="postal_code" id="postal_code" placeholder="Ingresa tu código postal">
+        </p>
         <!-- Nuevo selector: Tipo de alimento -->
         <p>
           <label for="food_type">¿Qué tipo de proteína?:</label>
@@ -180,6 +198,9 @@ function foad_register_shortcode() {
     
     <script type="text/javascript">
     jQuery(document).ready(function($){
+        // Variable con los códigos postales permitidos (obtenidos de la zona "Querétaro")
+        var allowedPostalCodes = <?php echo json_encode($allowed_postal_codes); ?>;
+        
         // Mostrar/ocultar el selector de nivel de actividad según el campo de años
         $('#years').on('input', function(){
             var years = parseFloat($(this).val());
@@ -202,6 +223,17 @@ function foad_register_shortcode() {
             if(years === 0 && months < 2){
                 alert('La edad de la mascota debe ser al menos 2 meses.');
                 return;
+            }
+            
+            // Validación del código postal
+            var postalCode = $('#postal_code').val().trim();
+            if(postalCode === ''){
+               alert('Por favor, ingresa tu código postal.');
+               return;
+            }
+            if( allowedPostalCodes.length > 0 && $.inArray(postalCode, allowedPostalCodes) === -1 ){
+               alert('Lo sentimos, para el código postal ingresado aún no se hacen envíos.');
+               return;
             }
             
             var totalMonths = years * 12 + months;
@@ -251,7 +283,6 @@ function foad_register_shortcode() {
             // Construir el HTML con los resultados, redondeando el pedido sugerido a 1 dígito decimal
             var html = '<h3>Resultados</h3>';
             html += '<p><strong>Edad en meses:</strong> ' + totalMonths.toFixed(0) + ' meses (' + (isAdult ? 'Adulto' : 'Cachorro') + ')</p>';
-           /* html += '<p><strong>Porcentaje aplicado:</strong> ' + (percentage*100).toFixed(1) + '%</p>';*/
             html += '<p><strong>Cantidad de alimento por día:</strong> ' + dailyAmount.toFixed(2) + ' kg</p>';
             html += '<p><strong>Cantidad por porción:</strong> ' + portionAmount.toFixed(2) + ' kg</p>';
             html += '<p class="ped-sugerido"><strong>Pedido sugerido:</strong> ' + suggestedOrder.toFixed(1) + ' kg</p>';
@@ -282,6 +313,7 @@ function foad_register_shortcode() {
                 weight: $('#weight').val(),
                 meals: $('#meals').val(),
                 days: $('#days').val(),
+                postal_code: $('#postal_code').val(),
                 food_type: $('#food_type').val(),
                 suggested_order: suggestedOrder,
                 action: 'generate_order'
@@ -311,13 +343,12 @@ function foad_register_shortcode() {
 }
 add_shortcode('food_order_calculator', 'foad_register_shortcode');
 
-
 /**
  * Handler AJAX para generar la orden en WooCommerce y guardar la información del formulario en la sesión.
  */
 function foad_generate_order() {
     // Validar y recoger los datos enviados vía AJAX
-    $required_fields = ['suggested_order', 'pet_type', 'pet_name', 'years', 'months', 'weight', 'meals', 'days', 'food_type'];
+    $required_fields = ['suggested_order', 'pet_type', 'pet_name', 'years', 'months', 'weight', 'meals', 'days', 'food_type', 'postal_code'];
     foreach ($required_fields as $field) {
         if ( ! isset( $_POST[$field] ) ) {
             wp_send_json_error('Falta el campo ' . $field);
@@ -333,20 +364,21 @@ function foad_generate_order() {
     $meals         = intval( $_POST['meals'] );
     $days          = intval( $_POST['days'] );
     $food_type     = sanitize_text_field( $_POST['food_type'] );
+    $postal_code   = sanitize_text_field( $_POST['postal_code'] );
 
     // Guardar todos los datos del formulario en un array para luego agregarlos a la orden
     $order_data = array(
-       'pet_type'  => $pet_type,
-       'pet_name'  => $pet_name,
-       'years'     => $years,
-       'months'    => $months,
-       'activity'  => $activity,
-       'weight'    => $weight,
-       'meals'     => $meals,
-       'days'      => $days,
-       'food_type' => $food_type,
-       'pedido_sugerido' => round($suggested_order,1)  // <-- Campo agregado
-
+       'pet_type'        => $pet_type,
+       'pet_name'        => $pet_name,
+       'years'           => $years,
+       'months'          => $months,
+       'activity'        => $activity,
+       'weight'          => $weight,
+       'meals'           => $meals,
+       'days'            => $days,
+       'food_type'       => $food_type,
+       'codigo_postal'   => $postal_code,
+       'pedido_sugerido' => round($suggested_order,1)
     );
     // Almacenar en la sesión de WooCommerce para luego agregar a la orden
     if ( class_exists('WC_Session') && WC()->session ) {
@@ -449,7 +481,6 @@ function foad_generate_order() {
 add_action('wp_ajax_generate_order', 'foad_generate_order');
 add_action('wp_ajax_nopriv_generate_order', 'foad_generate_order');
 
-
 /**
  * Función auxiliar para obtener el ID de variación dado un producto variable, el nombre del atributo y el valor.
  * Se asume que el atributo se llama "pa_gramaje".
@@ -469,20 +500,17 @@ function foad_get_variation_id_by_attribute( $product_id, $attribute, $value ) {
     return 0;
 }
 
-
 /**
  * Guardar los datos del formulario (almacenados en la sesión) como metadatos en la orden.
- * Se utiliza el hook 'woocommerce_checkout_create_order' para garantizar que la información
+ * Se utiliza el hook 'woocommerce_new_order' para garantizar que la información
  * se añada al objeto de la orden cuando se crea.
  */
-
-
 function foad_add_order_meta($order_id) {
     // 1. Obtener el objeto Order
     $order = wc_get_order($order_id);
     
     // 2. Debug inicial para confirmar ejecución
-    error_log('>>>> darwwwxxxxxxxxxFunción foad_add_order_metaxx ejecutándose para el pedidoxxxxxxxxxxxxxxdarwww ' . $order_id . ' <<<<');
+    error_log('>>>> foad_add_order_meta ejecutándose para el pedido ' . $order_id . ' <<<<');
 
     // 3. Verificar si la sesión está activa y tiene datos
     if (WC()->session && WC()->session->get('foad_order_data')) {
@@ -514,15 +542,16 @@ function foad_display_order_meta_in_admin( $order ){
     echo '<div class="order_data_column">';
     echo '<h4>Datos de la mascota</h4>';
     $fields = array(
-      'pet_type'  => 'Tipo de mascota',
-      'pet_name'  => 'Nombre',
-      'years'     => 'Años',
-      'months'    => 'Meses',
-      'activity'  => 'Nivel de actividad',
-      'weight'    => 'Peso',
-      'meals'     => 'Veces a comer al día',
-      'days'      => 'Días a comprar',
-      'food_type' => 'Tipo de alimento',
+      'pet_type'       => 'Tipo de mascota',
+      'pet_name'       => 'Nombre',
+      'years'          => 'Años',
+      'months'         => 'Meses',
+      'activity'       => 'Nivel de actividad',
+      'weight'         => 'Peso',
+      'meals'          => 'Veces a comer al día',
+      'days'           => 'Días a comprar',
+      'codigo_postal'  => 'Código postal',
+      'food_type'      => 'Tipo de alimento',
       'pedido_sugerido'=> 'Pedido sugerido'
     );
     echo '<ul>';
@@ -530,15 +559,12 @@ function foad_display_order_meta_in_admin( $order ){
     foreach( $fields as $key => $label ){
         $value = $order->get_meta($key);
         if( $value ){
-
             if($key == 'pedido_sugerido'){
                 echo '<li><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value ) . ' Kg</li>';
-            }else if($key == 'weight'){
+            } else if($key == 'weight'){
                 echo '<li><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value ) . ' Kg</li>';
-            }
-            else{
+            } else{
                 echo '<li><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value ) . '</li>';
-
             }
         }
     }
@@ -547,4 +573,141 @@ function foad_display_order_meta_in_admin( $order ){
 }
 add_action( 'woocommerce_admin_order_data_after_billing_address', 'foad_display_order_meta_in_admin', 10, 1 );
 
+
+/**
+ * -------------------------------------------------------------
+ * Agregar en el carrito el total de kilogramos que el cliente tiene.
+ * Se suma el peso (en kg) de cada artículo, usando el atributo "pa_gramaje"
+ * o el peso del producto si no se encuentra el atributo.
+ * -------------------------------------------------------------
+ */
+
+
+
+/**
+ * Inyecta hooks en los bloques del carrito (WooCommerce Blocks)
+ * Basado en la solución del Visual Hook Guide de Business Bloomer.
+ */
+add_filter( 'render_block', 'bbloomer_woocommerce_cart_block_do_actions', 9999, 2 );
+function bbloomer_woocommerce_cart_block_do_actions( $block_content, $block ) {
+    $blocks = array(
+        'woocommerce/cart',
+        'woocommerce/filled-cart-block',
+        'woocommerce/cart-items-block',
+        'woocommerce/cart-line-items-block',
+        'woocommerce/cart-cross-sells-block',
+        'woocommerce/cart-cross-sells-products-block',
+        'woocommerce/cart-totals-block',
+        'woocommerce/cart-order-summary-block',
+        'woocommerce/cart-order-summary-heading-block',
+        'woocommerce/cart-order-summary-coupon-form-block',
+        'woocommerce/cart-order-summary-subtotal-block',
+        'woocommerce/cart-order-summary-fee-block',
+        'woocommerce/cart-order-summary-discount-block',
+        'woocommerce/cart-order-summary-shipping-block',
+        'woocommerce/cart-order-summary-taxes-block',
+        'woocommerce/cart-express-payment-block',
+        'woocommerce/proceed-to-checkout-block',
+        'woocommerce/cart-accepted-payment-methods-block',
+    );
+    if ( in_array( $block['blockName'], $blocks ) ) {
+        ob_start();
+        do_action( 'bbloomer_before_' . $block['blockName'] );
+        echo $block_content;
+        do_action( 'bbloomer_after_' . $block['blockName'] );
+        $block_content = ob_get_clean();
+    }
+    return $block_content;
+}
+
+/**
+ * Convierte un string de peso (ej. "1 kg", "500 g") a kilogramos (float)
+ */
+function foad_convert_weight_to_kg( $weight_string ) {
+    $weight_string = strtolower( $weight_string );
+    if ( strpos( $weight_string, 'kg' ) !== false ) {
+        $value = floatval( str_replace( 'kg', '', $weight_string ) );
+        return $value;
+    } elseif ( strpos( $weight_string, 'g' ) !== false ) {
+        $value = floatval( str_replace( 'g', '', $weight_string ) );
+        return $value / 1000;
+    }
+    return 0;
+}
+
+/**
+ * Calcula y muestra el total de kilogramos en el carrito.
+ * Se engancha después del bloque de totales (cart-totals-block) de WooCommerce Blocks.
+ */
+function foad_display_total_weight_in_cart() {
+    if ( ! WC()->cart ) return;
+    $total_weight = 0;
+    foreach ( WC()->cart->get_cart() as $cart_item ) {
+
+        $weight_text = '';
+
+        // Si el producto tiene el atributo de variación "pa_gramaje", se usa ese valor.
+        if ( isset( $cart_item['variation']['pa_gramaje'] ) && ! empty( $cart_item['variation']['pa_gramaje'] ) ) {
+
+            $weight_text = $cart_item['variation']['pa_gramaje'];
+        }
+        if ( ! empty( $weight_text ) ) {
+            $item_weight = foad_convert_weight_to_kg( $weight_text );
+        } else {
+
+            // Sino, se utiliza el peso asignado al producto (asumido en kg)
+            $product = $cart_item['data'];
+            $item_weight = floatval( $product->get_weight() );
+        }
+        $total_weight += $item_weight * $cart_item['quantity'];
+    }
+
+    // Mostrar el total de kilogramos. Puedes personalizar el HTML y estilos.
+    echo '<div class="foad-total-weight" style="margin-top:10px;font-weight:bold;">';
+    echo esc_html__( 'Total de kilogramos: ', 'text-domain' ) .  $total_weight. ' kg';
+    echo '</div>';
+}
+add_action( 'bbloomer_before_woocommerce/proceed-to-checkout-block', 'foad_display_total_weight_in_cart' );
+
+
+/**
+ * Endpoint AJAX para obtener el total de kilogramos del carrito.
+ */
+function foad_get_cart_total_weight_ajax() {
+
+
+    if ( ! WC()->cart ) {
+        wp_send_json_error('No hay carrito');
+    }
+    $total_weight = 0;
+    foreach ( WC()->cart->get_cart() as $cart_item ) {
+        $weight_text = '';
+        if ( isset( $cart_item['variation']['pa_gramaje'] ) && ! empty( $cart_item['variation']['pa_gramaje'] ) ) {
+            $weight_text = $cart_item['variation']['pa_gramaje'];
+        }
+        if ( ! empty( $weight_text ) ) {
+            $item_weight = foad_convert_weight_to_kg( $weight_text );
+        } else {
+            $product = $cart_item['data'];
+            $item_weight = floatval( $product->get_weight() );
+        }
+        $total_weight += $item_weight * $cart_item['quantity'];
+    }
+    wp_send_json_success( array( 'total_weight' => wc_format_decimal( $total_weight, 2 ) . ' kg' ) );
+}
+add_action( 'wp_ajax_foad_get_cart_total_weight', 'foad_get_cart_total_weight_ajax' );
+add_action( 'wp_ajax_nopriv_foad_get_cart_total_weight', 'foad_get_cart_total_weight_ajax' );
+
+/**
+ * Encola el script para actualizar dinámicamente el total de kilogramos en el carrito.
+ */
+function foad_enqueue_cart_weight_update_script() {
+    if ( is_cart() ) {
+        wp_enqueue_script( 'foad-cart-weight-update', plugin_dir_url( __FILE__ ) . 'foad-cart-weight-update.js', array('jquery'), '4.0', true );
+        wp_localize_script( 'foad-cart-weight-update', 'foad_ajax_obj', array(
+            'ajax_url' => admin_url( 'admin-ajax.php' )
+        ));
+    }
+}
+add_action( 'wp_enqueue_scripts', 'foad_enqueue_cart_weight_update_script' );
 
