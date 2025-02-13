@@ -168,10 +168,11 @@ function foad_register_shortcode() {
         </p>
         <!-- Nuevo campo: Código postal -->
         <p>
-          <label for="postal_code">Código postal:</label>
-          <input type="text" name="postal_code" id="postal_code" placeholder="Ingresa tu código postal">
+          <label for="postal_code">Tú código postal:</label>
+          <input type="text" name="postal_code" id="postal_code" placeholder="Ingrésalo para corroborar la cobertua en tu zona">
         </p>
         <!-- Nuevo selector: Tipo de alimento -->
+
         <p>
           <label for="food_type">¿Qué tipo de proteína?:</label>
           <select name="food_type" id="food_type">
@@ -664,7 +665,7 @@ function foad_display_total_weight_in_cart() {
 
     // Mostrar el total de kilogramos. Puedes personalizar el HTML y estilos.
     echo '<div class="foad-total-weight" style="margin-top:10px;font-weight:bold;">';
-    echo esc_html__( 'Total de kilogramos: ', 'text-domain' ) .  $total_weight. ' kg';
+    echo esc_html__( 'Kg en tu carrito: ', 'text-domain' ) .  $total_weight. ' kg';
     echo '</div>';
 }
 add_action( 'bbloomer_before_woocommerce/proceed-to-checkout-block', 'foad_display_total_weight_in_cart' );
@@ -703,7 +704,7 @@ add_action( 'wp_ajax_nopriv_foad_get_cart_total_weight', 'foad_get_cart_total_we
  */
 function foad_enqueue_cart_weight_update_script() {
     if ( is_cart() ) {
-        wp_enqueue_script( 'foad-cart-weight-update', plugin_dir_url( __FILE__ ) . 'foad-cart-weight-update.js', array('jquery'), '4.0', true );
+        wp_enqueue_script( 'foad-cart-weight-update', plugin_dir_url( __FILE__ ) . 'foad-cart-weight-update.js', array('jquery'), '8.0', true );
         wp_localize_script( 'foad-cart-weight-update', 'foad_ajax_obj', array(
             'ajax_url' => admin_url( 'admin-ajax.php' )
         ));
@@ -711,3 +712,14 @@ function foad_enqueue_cart_weight_update_script() {
 }
 add_action( 'wp_enqueue_scripts', 'foad_enqueue_cart_weight_update_script' );
 
+
+
+// En el archivo functions.php de tu tema o en un plugin
+add_filter('woocommerce_attribute_label', 'cambiar_etiqueta_gramaje', 10, 3);
+
+function cambiar_etiqueta_gramaje($label, $name, $product) {
+    if($name === 'pa_gramaje') {
+        return 'Contenido Neto'; // Nuevo nombre que quieres mostrar
+    }
+    return $label;
+}
