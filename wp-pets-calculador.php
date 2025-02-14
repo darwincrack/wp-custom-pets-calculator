@@ -11,6 +11,64 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Salir si se accede directamente.
 }
 
+
+function foad_register_food_order_cpt() {
+    $labels = array(
+        'name'                  => _x( 'Pedidos de Alimento', 'Post Type General Name', 'textdomain' ),
+        'singular_name'         => _x( 'Pedido de Alimento', 'Post Type Singular Name', 'textdomain' ),
+        'menu_name'             => __( 'Pedidos de Alimento', 'textdomain' ),
+        'name_admin_bar'        => __( 'Pedido de Alimento', 'textdomain' ),
+        'archives'              => __( 'Archivos de Pedidos', 'textdomain' ),
+        'attributes'            => __( 'Atributos de Pedido', 'textdomain' ),
+        'parent_item_colon'     => __( 'Pedido Padre:', 'textdomain' ),
+        'all_items'             => __( 'Todos los Pedidos', 'textdomain' ),
+        'add_new_item'          => __( 'Agregar Nuevo Pedido', 'textdomain' ),
+        'add_new'               => __( 'Agregar Nuevo', 'textdomain' ),
+        'new_item'              => __( 'Nuevo Pedido', 'textdomain' ),
+        'edit_item'             => __( 'Editar Pedido', 'textdomain' ),
+        'update_item'           => __( 'Actualizar Pedido', 'textdomain' ),
+        'view_item'             => __( 'Ver Pedido', 'textdomain' ),
+        'view_items'            => __( 'Ver Pedidos', 'textdomain' ),
+        'search_items'          => __( 'Buscar Pedido', 'textdomain' ),
+        'not_found'             => __( 'No encontrado', 'textdomain' ),
+        'not_found_in_trash'    => __( 'No encontrado en la papelera', 'textdomain' ),
+        'featured_image'        => __( 'Imagen Destacada', 'textdomain' ),
+        'set_featured_image'    => __( 'Establecer imagen destacada', 'textdomain' ),
+        'remove_featured_image' => __( 'Remover imagen destacada', 'textdomain' ),
+        'use_featured_image'    => __( 'Usar como imagen destacada', 'textdomain' ),
+        'insert_into_item'      => __( 'Insertar en el pedido', 'textdomain' ),
+        'uploaded_to_this_item' => __( 'Subido a este pedido', 'textdomain' ),
+        'items_list'            => __( 'Lista de pedidos', 'textdomain' ),
+        'items_list_navigation' => __( 'Navegación de la lista de pedidos', 'textdomain' ),
+        'filter_items_list'     => __( 'Filtrar lista de pedidos', 'textdomain' ),
+    );
+    $args = array(
+        'label'                 => __( 'Pedido de Alimento', 'textdomain' ),
+        'description'           => __( 'Pedidos realizados con el calculador de alimento', 'textdomain' ),
+        'labels'                => $labels,
+        'supports'              => array( 'title', 'editor', 'author', 'custom-fields' ),
+        'hierarchical'          => false,
+        'public'                => true,
+        'show_ui'               => true,
+        'show_in_menu'          => true,
+        'menu_icon'             => 'dashicons-cart',
+        'show_in_admin_bar'     => true,
+        'show_in_nav_menus'     => true,
+        'can_export'            => true,
+        'has_archive'           => true,
+        'exclude_from_search'   => false,
+        'publicly_queryable'    => true,
+        'capability_type'       => 'post',
+        'show_in_rest'          => true,
+    );
+    register_post_type( 'food_order', $args );
+}
+add_action( 'init', 'foad_register_food_order_cpt' );
+
+
+
+
+
 /**
  * Registra el shortcode [food_order_calculator]
  */
@@ -171,6 +229,16 @@ function foad_register_shortcode() {
           <label for="postal_code">Tú código postal:</label>
           <input type="text" name="postal_code" id="postal_code" placeholder="Ingrésalo para corroborar la cobertua en tu zona">
         </p>
+
+        <p>
+          <label for="correo_electronico">Tú correo eléctronico:</label>
+          <input type="text" name="correo_electronico" id="correo_electronico" placeholder="ej: jhondoe@gmail.com">
+        </p>
+
+        <p>
+          <label for="telefono">Tú teléfono:</label>
+          <input type="text" name="telefono" id="telefono" placeholder="">
+        </p>
         <!-- Nuevo selector: Tipo de alimento -->
 
         <p>
@@ -217,12 +285,26 @@ function foad_register_shortcode() {
             // Recoger los valores del formulario
             var petType = $('#pet_type').val();
             var petName = $('#pet_name').val();
+            var correo_electronico = $('#correo_electronico').val();
+            var telefono = $('#telefono').val();
+
             var years = parseFloat($('#years').val());
             var months = parseFloat($('#months').val());
             
             // Validación: la edad mínima debe ser 2 meses
             if(years === 0 && months < 2){
                 alert('La edad de la mascota debe ser al menos 2 meses.');
+                return;
+            }
+
+
+            if(correo_electronico == ""){
+                alert('Complete el campo correo eléctronico.');
+                return;
+            }
+
+            if(telefono == ""){
+                alert('Complete el campo teléfono.');
                 return;
             }
             
@@ -316,6 +398,8 @@ function foad_register_shortcode() {
                 days: $('#days').val(),
                 postal_code: $('#postal_code').val(),
                 food_type: $('#food_type').val(),
+                correo_electronico : $('#correo_electronico').val(),
+                telefono : $('#telefono').val(),
                 suggested_order: suggestedOrder,
                 action: 'generate_order'
             };
@@ -349,7 +433,7 @@ add_shortcode('food_order_calculator', 'foad_register_shortcode');
  */
 function foad_generate_order() {
     // Validar y recoger los datos enviados vía AJAX
-    $required_fields = ['suggested_order', 'pet_type', 'pet_name', 'years', 'months', 'weight', 'meals', 'days', 'food_type', 'postal_code'];
+    $required_fields = ['suggested_order', 'pet_type', 'pet_name', 'years', 'months', 'weight', 'meals', 'days', 'food_type', 'postal_code','correo_electronico','telefono'];
     foreach ($required_fields as $field) {
         if ( ! isset( $_POST[$field] ) ) {
             wp_send_json_error('Falta el campo ' . $field);
@@ -365,7 +449,9 @@ function foad_generate_order() {
     $meals         = intval( $_POST['meals'] );
     $days          = intval( $_POST['days'] );
     $food_type     = sanitize_text_field( $_POST['food_type'] );
-    $postal_code   = sanitize_text_field( $_POST['postal_code'] );
+    $postal_code = sanitize_text_field( $_POST['postal_code'] );
+    $correo_electronico   = sanitize_text_field( $_POST['correo_electronico'] );
+    $telefono   = sanitize_text_field( $_POST['telefono'] );
 
     // Guardar todos los datos del formulario en un array para luego agregarlos a la orden
     $order_data = array(
@@ -379,6 +465,8 @@ function foad_generate_order() {
        'days'            => $days,
        'food_type'       => $food_type,
        'codigo_postal'   => $postal_code,
+       'correo_electronico'   => $correo_electronico,
+       'telefono'   => $telefono,
        'pedido_sugerido' => round($suggested_order,1)
     );
     // Almacenar en la sesión de WooCommerce para luego agregar a la orden
@@ -474,6 +562,37 @@ function foad_generate_order() {
             WC()->cart->add_to_cart( $product_id, 1, $variation_id_250, array( 'pa_gramaje' => '250 g' ) );
         }
     }
+
+
+
+// --- Aquí se crea el Custom Post Type para el pedido ---
+// Crear un título para el pedido (por ejemplo, usando el nombre de la mascota y la fecha)
+$post_title = sprintf( 'Pedido de %s - %s', $pet_name, date_i18n( 'd/m/Y H:i' ) );
+
+// Construir el contenido del post (opcional, puedes darle formato o incluir más datos)
+$post_content = "Información del Pedido:\n\n";
+foreach ( $order_data as $key => $value ) {
+    $post_content .= sprintf( "%s: %s\n", ucfirst( str_replace('_', ' ', $key) ), $value );
+}
+
+$post_data = array(
+    'post_title'   => $post_title,
+    'post_content' => $post_content,
+    'post_status'  => 'publish', // O 'pending' si deseas aprobarlos manualmente
+    'post_type'    => 'food_order',
+    'post_author'  => get_current_user_id(), // Guarda el ID del usuario, si está logueado
+);
+
+$post_id = wp_insert_post( $post_data );
+
+if ( ! is_wp_error( $post_id ) ) {
+    // Guardar los mismos metadatos en el CPT para una consulta más sencilla en el futuro
+    foreach ( $order_data as $key => $value ) {
+        update_post_meta( $post_id, $key, $value );
+    }
+}
+
+
     
     $cart_url = wc_get_cart_url();
     wp_send_json_success( array( 'redirect' => $cart_url ) );
@@ -543,17 +662,19 @@ function foad_display_order_meta_in_admin( $order ){
     echo '<div class="order_data_column">';
     echo '<h4>Datos de la mascota</h4>';
     $fields = array(
-      'pet_type'       => 'Tipo de mascota',
-      'pet_name'       => 'Nombre',
-      'years'          => 'Años',
-      'months'         => 'Meses',
-      'activity'       => 'Nivel de actividad',
-      'weight'         => 'Peso',
-      'meals'          => 'Veces a comer al día',
-      'days'           => 'Días a comprar',
-      'codigo_postal'  => 'Código postal',
-      'food_type'      => 'Tipo de alimento',
-      'pedido_sugerido'=> 'Pedido sugerido'
+      'pet_type'                => 'Tipo de mascota',
+      'pet_name'                => 'Nombre',
+      'years'                   => 'Años',
+      'months'                  => 'Meses',
+      'activity'                => 'Nivel de actividad',
+      'weight'                  => 'Peso',
+      'meals'                   => 'Veces a comer al día',
+      'days'                    => 'Días a comprar',
+      'codigo_postal'           => 'Código postal',
+      'correo_electronico'      => 'Correo eléctronico',
+      'telefono'                => 'Teléfono',
+      'food_type'               => 'Tipo de alimento',
+      'pedido_sugerido'         => 'Pedido sugerido'
     );
     echo '<ul>';
 
@@ -663,6 +784,8 @@ function foad_display_total_weight_in_cart() {
         $total_weight += $item_weight * $cart_item['quantity'];
     }
 
+    WC()->session->set('total_weight', $total_weight);
+
     // Mostrar el total de kilogramos. Puedes personalizar el HTML y estilos.
     echo '<div class="foad-total-weight" style="margin-top:10px;font-weight:bold;">';
     echo esc_html__( 'Kg en tu carrito: ', 'text-domain' ) .  $total_weight. ' kg';
@@ -694,7 +817,11 @@ function foad_get_cart_total_weight_ajax() {
         }
         $total_weight += $item_weight * $cart_item['quantity'];
     }
+    WC()->session->set('total_weight', wc_format_decimal($total_weight,2));
+        
     wp_send_json_success( array( 'total_weight' => wc_format_decimal( $total_weight, 2 ) . ' kg' ) );
+
+
 }
 add_action( 'wp_ajax_foad_get_cart_total_weight', 'foad_get_cart_total_weight_ajax' );
 add_action( 'wp_ajax_nopriv_foad_get_cart_total_weight', 'foad_get_cart_total_weight_ajax' );
@@ -723,3 +850,118 @@ function cambiar_etiqueta_gramaje($label, $name, $product) {
     }
     return $label;
 }
+
+
+/**
+ * Agregar columnas personalizadas en el listado de "Pedidos de Alimento" en el admin
+ */
+function foad_set_custom_food_order_columns($columns) {
+    // Opcional: quitar la columna de fecha para reordenarla después
+    unset($columns['date']);
+    $columns['pet_type']           = __('Tipo de Mascota', 'textdomain');
+    $columns['pet_name']           = __('Nombre', 'textdomain');
+    $columns['years']              = __('Años', 'textdomain');
+    $columns['months']             = __('Meses', 'textdomain');
+    $columns['activity']           = __('Nivel de Actividad', 'textdomain');
+    $columns['weight']             = __('Peso', 'textdomain');
+    $columns['meals']              = __('Veces al Día', 'textdomain');
+    $columns['days']               = __('Días a Comprar', 'textdomain');
+    $columns['codigo_postal']      = __('Código Postal', 'textdomain');
+    $columns['correo_electronico'] = __('Correo Electrónico', 'textdomain');
+    $columns['telefono']           = __('Teléfono', 'textdomain');
+    $columns['food_type']          = __('Tipo de Alimento', 'textdomain');
+    $columns['pedido_sugerido']    = __('Pedido Sugerido', 'textdomain');
+    // Reagregar la columna de fecha al final
+    $columns['date']               = __('Fecha', 'textdomain');
+    return $columns;
+}
+add_filter('manage_food_order_posts_columns', 'foad_set_custom_food_order_columns');
+
+
+
+/**
+ * Mostrar el contenido de las columnas personalizadas en el listado de pedidos
+ */
+function foad_custom_food_order_column( $column, $post_id ) {
+    switch ( $column ) {
+        case 'pet_type':
+            echo esc_html( get_post_meta( $post_id, 'pet_type', true ) );
+            break;
+        case 'pet_name':
+            echo esc_html( get_post_meta( $post_id, 'pet_name', true ) );
+            break;
+        case 'years':
+            echo esc_html( get_post_meta( $post_id, 'years', true ) );
+            break;
+        case 'months':
+            echo esc_html( get_post_meta( $post_id, 'months', true ) );
+            break;
+        case 'activity':
+            echo esc_html( get_post_meta( $post_id, 'activity', true ) );
+            break;
+        case 'weight':
+            echo esc_html( get_post_meta( $post_id, 'weight', true ) ) . ' kg';
+            break;
+        case 'meals':
+            echo esc_html( get_post_meta( $post_id, 'meals', true ) );
+            break;
+        case 'days':
+            echo esc_html( get_post_meta( $post_id, 'days', true ) );
+            break;
+        case 'codigo_postal':
+            echo esc_html( get_post_meta( $post_id, 'codigo_postal', true ) );
+            break;
+        case 'correo_electronico':
+            echo esc_html( get_post_meta( $post_id, 'correo_electronico', true ) );
+            break;
+        case 'telefono':
+            echo esc_html( get_post_meta( $post_id, 'telefono', true ) );
+            break;
+        case 'food_type':
+            echo esc_html( get_post_meta( $post_id, 'food_type', true ) );
+            break;
+        case 'pedido_sugerido':
+            echo esc_html( get_post_meta( $post_id, 'pedido_sugerido', true ) ) . ' kg';
+            break;
+    }
+}
+add_action('manage_food_order_posts_custom_column', 'foad_custom_food_order_column', 10, 2);
+
+
+
+function foad_remove_row_actions( $actions, $post ) {
+    if ( 'food_order' === get_post_type( $post ) ) {
+        // Se eliminan las acciones de edición, edición rápida y papelera.
+        unset( $actions['edit'] );
+        unset( $actions['inline hide-if-no-js'] );
+        // Opcional: si también deseas quitar la opción de “Ver”, descomenta la siguiente línea:
+         unset( $actions['view'] );
+    }
+    return $actions;
+}
+add_filter( 'post_row_actions', 'foad_remove_row_actions', 10, 2 );
+
+
+function foad_remove_food_order_submenu() {
+    remove_submenu_page( 'edit.php?post_type=food_order', 'post-new.php?post_type=food_order' );
+}
+add_action( 'admin_menu', 'foad_remove_food_order_submenu' );
+
+
+function foad_disable_food_order_editing() {
+    global $pagenow;
+    // Si se intenta acceder a la pantalla de edición o creación de un pedido
+    if ( ( 'post.php' === $pagenow || 'post-new.php' === $pagenow ) && isset($_GET['post_type']) && 'food_order' === $_GET['post_type'] ) {
+        wp_redirect( admin_url('edit.php?post_type=food_order') );
+        exit;
+    }
+    // También se redirige si se está editando un pedido existente
+    if ( 'post.php' === $pagenow && isset($_GET['post']) ) {
+        $post = get_post( intval( $_GET['post'] ) );
+        if ( $post && 'food_order' === $post->post_type ) {
+            wp_redirect( admin_url('edit.php?post_type=food_order') );
+            exit;
+        }
+    }
+}
+add_action( 'admin_init', 'foad_disable_food_order_editing' );
